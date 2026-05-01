@@ -1,0 +1,44 @@
+[
+  {
+    "doc_id": "sebi_lodr_2015",
+    "name": "SEBI Listing Obligations and Disclosure Requirements Regulations 2015",
+    "category": "sebi_regulation",
+    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/1441284401427.pdf"
+  },
+  {
+    "doc_id": "sebi_pit_2015",
+    "name": "SEBI Prohibition of Insider Trading Regulations 2015",
+    "category": "sebi_regulation",
+    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/1422894793684.pdf"
+  },
+  {
+    "doc_id": "sebi_icdr_2018",
+    "name": "SEBI Issue of Capital and Disclosure Requirements Regulations 2018",
+    "category": "sebi_regulation",
+    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/sep2018/1537169869590.pdf"
+  },
+  {
+    "doc_id": "sebi_sast_2011",
+    "name": "SEBI Substantial Acquisition of Shares and Takeovers Regulations 2011",
+    "category": "sebi_regulation",
+    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/1316005591416.pdf"
+  },
+  {
+    "doc_id": "rbi_kyc_master_dir",
+    "name": "RBI Master Direction Know Your Customer 2016",
+    "category": "rbi_master_direction",
+    "url": "https://rbidocs.rbi.org.in/rdocs/notification/pdfs/NOTI111ACF2D8B2A3E4D948D9D2BFB61C4FEF8.PDF"
+  },
+  {
+    "doc_id": "rbi_nbfc_master_dir",
+    "name": "RBI Master Direction NBFC Acceptance of Public Deposits",
+    "category": "rbi_master_direction",
+    "url": "https://rbidocs.rbi.org.in/rdocs/notification/pdfs/MD12_2903201566947C5C0DB448CE977A9EA98F80E4A9.PDF"
+  },
+  {
+    "doc_id": "sebi_mutual_fund_reg",
+    "name": "SEBI Mutual Funds Regulations 1996 (amended)",
+    "category": "sebi_regulation",
+    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/1382610440272.pdf"
+  }
+]
