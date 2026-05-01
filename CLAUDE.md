@@ -1,96 +1,102 @@
-# RAG Arena — Claude Code Instructions
+# RAG Arena — Claude Instructions
 
-## What this project is
+## My role in this project
+I am the **Architect and Orchestrator**. I define what gets built, how it gets built, which interfaces, which versions, and what quality bar code must meet. I do not write implementation code — Gemini does. I review everything Gemini produces before it touches git.
 
-A 4-way RAG retrieval benchmarking system that runs the same query through four retrieval strategies (Dense, BM25, Tree Index, Hybrid), evaluates each on 6 metrics (4 RAGAS quality + latency + token cost), and presents results on a live Streamlit dashboard.
-
-**This is not a chatbot.** It is an evaluation framework. The RAG component exists to be measured.
-
-**Target domain:** RBI and SEBI regulatory PDFs — long-form, hierarchically structured documents.
-
-Full specification: `rag-arena-spec.md` (project root). Read it before doing anything non-trivial.
+Full project specification: `rag-arena-spec.md`. Interface contracts and current build state: `CODEBASE_GRAPH.md`. Read these two before any task. Do not read source files before checking `CODEBASE_GRAPH.md`.
 
 ---
 
-## Read order for any new task
+## Agent roles
 
-1. `rag-arena-spec.md` — understand intent and constraints
-2. `CODEBASE_GRAPH.md` — understand current state of source files (do not read source files without checking this first)
-3. Only then load the specific source files relevant to the task
+| Agent | Role | Does |
+|-------|------|------|
+| Claude (me) | Architect + Orchestrator + Reviewer + Security | Designs, specifies tasks, reviews output, runs security check, commits and pushes |
+| Gemini | Implementer | Writes code exactly as specified. No architectural decisions. |
 
 ---
 
-## Development Workflow — Multi-Agent Structure
+## How I trigger Gemini
 
-Five agent roles. Only one is active at a time. Default role: **Coder**.
-
-| Role | Reads | Produces | Does NOT |
-|------|-------|----------|----------|
-| Architect | spec + graph | Task list for current phase | Write code |
-| Coder | task list + graph + relevant files | Implementation, one file at a time | Review own output |
-| Reviewer | changed file + spec + graph | Inline comments + updated graph | Fix code |
-| Security | all phase changes | Security report | Fix code |
-| Documenter | graph + changed files + spec §13 | README update + commit + push | — |
-
-Switch role by user instruction: "act as architect / reviewer / security / documenter"
-
-### Workflow loop per phase
-
-```
-1. Architect → task list
-2. Coder → writes one file
-3. Reviewer → approves or returns to Coder with specific instructions
-   → updates CODEBASE_GRAPH.md on approval
-4. repeat 2–3 for each task
-5. Security → scans all phase changes
-6. Documenter → README update + commit (feat(phase-N): <what was built>)
+**Invocation pattern (confirmed working):**
+```bash
+/home/hitaish/.npm-global/bin/gemini -p "$(cat .agent/TASK.md)" --approval-mode=yolo
 ```
 
-Use worktree isolation for Coder on each phase. Run `simplify` skill after Reviewer approval, before Security.
+**Output noise to strip:** Gemini prefixes output with `YOLO mode is enabled. All tool calls will be automatically approved.` (appears twice) and `Ripgrep is not available. Falling back to GrepTool.` — filter these lines, actual response follows.
+
+**Handoff files (gitignored, transient):**
+- `.agent/TASK.md` — I write this before every Gemini invocation. Contains: role reminder, exact task, files to create/modify, constraints, which context files to read.
+- `.agent/GEMINI_DONE.md` — Gemini writes this on completion. Contains: summary of what was done, any blockers or questions.
+
+**What Gemini gets per call (nothing more):**
+- The TASK.md I wrote
+- `CODEBASE_GRAPH.md`
+- Only the named source files relevant to the task
+
+**What Gemini never gets:**
+- The full spec (too large, Gemini reads CODEBASE_GRAPH.md for context)
+- Files not listed in TASK.md
+- Architectural rationale beyond what's needed to implement the task
 
 ---
 
-## Implementation Phases
+## Workflow per phase
 
-### Phase 1 — Foundation (data pipeline + shared infrastructure)
-- Project structure, venv, `.env`
-- `ingestion/downloader.py`, `ingestion/extractor.py`, `ingestion/chunker.py`
-- `scripts/ingest.py` end-to-end
-- `retrieval/base.py` abstract Retriever class
-- `evaluation/logger.py` SQLite schema
-- `tests/` skeleton + fixture corpus (5 pages)
-- Exit: `scripts/ingest.py` runs clean, chunks inspectable, base class defined
+```
+1. ARCHITECT (me)
+   Read spec phase N + CODEBASE_GRAPH.md
+   → Write ordered task list into CODEBASE_GRAPH.md header
+   → For each task: write .agent/TASK.md, trigger Gemini
 
-### Phase 2 — Retrieval Pipelines
-- `retrieval/dense.py` — FAISS + `all-MiniLM-L6-v2`
-- `retrieval/bm25.py` — rank-bm25
-- `retrieval/tree_index.py` — LlamaIndex TreeIndex + Gemini
-- `retrieval/hybrid.py` — Dense + BM25 parallel + cross-encoder reranker
-- `scripts/build_indexes.py`
-- Exit: all 4 retrievers pass unit tests, return shared schema
+2. CODER (Gemini, headless)
+   Reads TASK.md + CODEBASE_GRAPH.md + named files
+   → Writes implementation
+   → Updates CODEBASE_GRAPH.md File Registry
+   → Writes .agent/GEMINI_DONE.md
 
-### Phase 3 — Generation + Evaluation Loop
-- `generation/generator.py` — Gemini Flash primary, Groq fallback
-- `evaluation/ragas_runner.py` — RAGAS dataset + 4 metrics
-- `evaluation/operational.py` — latency timer, token cost
-- `scripts/run_eval.py` — 50 questions × 4 strategies → 200 rows in DB
-- Exit: `results/evals.db` contains 200 rows, all 6 metrics populated
+3. REVIEWER (me)
+   Read changed file(s) + relevant spec section
+   PASS → proceed to next task
+   FAIL → rewrite TASK.md with specific fix instructions → re-trigger Gemini
 
-### Phase 4 — Dashboard
-- `dashboard/app.py` + components: query_runner, comparison, aggregate, drilldown
-- Exit: `streamlit run dashboard/app.py` functional, live query under 5s for Dense/BM25/Hybrid
+4. SECURITY (me, once per phase)
+   Scan all changed files: no hardcoded secrets, no eval() on user input,
+   no LLM output written to DB without sanitisation, no API keys in source
 
-### Phase 5 — Findings + Documentation
-- `scripts/export_findings.py` → `results/findings.md` + `results/summary.csv`
-- `README.md` with findings, architecture diagram, setup instructions
-- 2-minute screen recording demo
-- `v1.0.0` GitHub release
+5. COMMIT + PUSH (me)
+   Commit message: feat(phase-N): <what was built>
+   Push to origin/main
+   Update CODEBASE_GRAPH.md header to next phase
+```
 
 ---
 
-## Interface Contracts — Do Not Change Without Updating All Dependents
+## Token discipline
 
-```python
+- Each Gemini call = one task, one file or one tightly related group of files. Never a whole phase in one call.
+- I use the `Explore` subagent for read-heavy codebase searches — keeps my main context clean.
+- I use the `Agent` tool to run Reviewer and Security in parallel when multiple files are ready.
+- If a task requires more context than fits in one TASK.md, I split the task.
+- I never let Gemini accumulate context across calls — each call is stateless with an explicit context list.
+
+---
+
+## Hard rules
+
+1. **No Gemini output reaches git without my review.** Every file Gemini writes goes through step 3 above.
+2. **Never hardcode API keys.** All secrets via `.env` + `python-dotenv`.
+3. **Never change interface contracts** (`Chunk`, `RetrievalResult`, `EvalRow`) without updating all dependent files first.
+4. **Every file created or modified: update `CODEBASE_GRAPH.md`** before stopping.
+5. **Generation model must be identical** across all 4 retrieval strategies in any single eval run.
+6. **Do not generate ground truth answers with an LLM.** `data/eval/ground_truth.json` is hand-written only.
+7. **Scope is `rag_arena/` only.** No reads or writes outside this directory.
+
+---
+
+## Interface contracts — do not change without cascading updates
+
+```
 Chunk           = {id: str, text: str, doc_id: str, page: int, section: str}
 RetrievalResult = {strategy: str, chunks: List[Chunk], latency_ms: float, token_cost: int}
 EvalRow         = {query_id: str, strategy: str, context_precision: float,
@@ -100,58 +106,6 @@ EvalRow         = {query_id: str, strategy: str, context_precision: float,
 
 ---
 
-## Hard Rules
+## Stack (locked — do not upgrade mid-project)
 
-- **Never hardcode API keys.** All secrets via `.env` + `python-dotenv`.
-- **Never change interface contracts** in `CODEBASE_GRAPH.md` without updating all dependent files.
-- **Every file you create or modify:** update `CODEBASE_GRAPH.md` File Registry before stopping.
-- **Generation model must be identical** across all 4 retrieval strategies in any single eval run. The only variable being tested is retrieval.
-- **Do not generate ground truth answers with an LLM.** `data/eval/ground_truth.json` is hand-written only. LLM-generated ground truth makes RAGAS Context Recall scores circular.
-- **Use `all-MiniLM-L6-v2` (local) for Dense embeddings** — not OpenAI embeddings. Keeps project runnable without paid API access.
-- **Tree Index is expensive** (~$0.01–$0.05/query). Add a cost guard in `run_eval.py` that prints estimated cost and asks for confirmation before running Tree Index on the full eval set.
-- **Hybrid reranker is a cross-encoder**, not a bi-encoder. Score (query, chunk) pairs jointly. This distinction matters for interviews.
-
----
-
-## LLM Role Assignment
-
-| Role | Primary | Fallback |
-|------|---------|----------|
-| RAG answer generation | Gemini 1.5 Flash | Groq / Llama 3.3 70B |
-| RAGAS judge | Gemini 1.5 Flash | Groq / Llama 3.3 70B |
-| Tree Index node summarisation | Gemini 1.5 Flash | Groq / Llama 3.3 70B |
-| Embeddings | `all-MiniLM-L6-v2` (local) | — |
-| Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` (local) | — |
-
-Fallback trigger: Gemini call fails or hits rate limit → retry once → fall back to Groq.
-
----
-
-## Tech Stack
-
-Python 3.11+ | pdfplumber | FAISS + sentence-transformers | rank-bm25 | llama-index-core | llama-index-llms-gemini | ragas | streamlit | sqlite3 + pandas | pytest | python-dotenv | uv (package manager)
-
----
-
-## Key Out-of-Scope Items
-
-No authentication, no document upload UI, no fine-tuned embeddings, no streaming responses, no cloud deployment, no non-PDF formats.
-
----
-
-## Quick Commands (Makefile)
-
-```bash
-make ingest          # scripts/ingest.py
-make build-indexes   # scripts/build_indexes.py
-make eval            # scripts/run_eval.py
-make dashboard       # streamlit run dashboard/app.py
-make test            # pytest tests/ -v
-make findings        # scripts/export_findings.py
-```
-
----
-
-## CODEBASE_GRAPH.md
-
-Maintained at project root. Every agent reads this before reading source files. Every agent updates this after creating or modifying a file. Format: File Registry + Interface Contracts + Dependency Map + Review Status. See `rag-arena-spec.md` Section 16 for full format.
+Python 3.12 (venv at `.venv/`) | Gemini 1.5 Flash (primary LLM) | Groq/Llama 3.3 70B (fallback) | `all-MiniLM-L6-v2` (local embeddings) | `cross-encoder/ms-marco-MiniLM-L-6-v2` (local reranker) | FAISS | rank-bm25 | llama-index-core | ragas | streamlit | sqlite3 | pytest | uv

@@ -26,6 +26,9 @@ results/evals.db
 *.swp
 *.swo
 
+# Agent handoff files (transient, not source)
+.agent/
+
 # OS
 .DS_Store
 Thumbs.db
