@@ -100,6 +100,7 @@ def test_hybrid_deduplication(test_chunks):
     not os.getenv("GOOGLE_API_KEY"),
     reason="GOOGLE_API_KEY not set — skipping Tree Index tests"
 )
+@pytest.mark.flaky(reruns=3, reruns_delay=20)
 def test_tree_index_build_and_retrieve(test_chunks):
     from src.retrieval.tree_index import TreeIndexRetriever
     r = TreeIndexRetriever(test_chunks)
@@ -113,6 +114,7 @@ def test_tree_index_build_and_retrieve(test_chunks):
     not os.getenv("GOOGLE_API_KEY"),
     reason="GOOGLE_API_KEY not set — skipping Tree Index tests"
 )
+@pytest.mark.flaky(reruns=3, reruns_delay=20)
 def test_tree_index_save_load(test_chunks, tmp_path):
     from src.retrieval.tree_index import TreeIndexRetriever
     index_path = str(tmp_path / "tree_index")
