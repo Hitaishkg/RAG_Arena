@@ -17,10 +17,10 @@ class TreeIndexRetriever(BaseRetriever):
 
         # Configure Settings
         Settings.llm = GoogleGenAI(
-            model="models/gemini-1.5-flash",
+            model="gemini-2.5-flash",
             api_key=self.api_key,
         )
-        Settings.embed_model = "local"
+        Settings.embed_model = "local:all-MiniLM-L6-v2"
         Settings.chunk_size = 512
         Settings.chunk_overlap = 64
 
@@ -91,8 +91,8 @@ class TreeIndexRetriever(BaseRetriever):
         from llama_index.core import StorageContext, load_index_from_storage, Settings
         from llama_index.llms.google_genai import GoogleGenAI
 
-        Settings.llm = GoogleGenAI(model="models/gemini-1.5-flash", api_key=self.api_key)
-        Settings.embed_model = "local"
+        Settings.llm = GoogleGenAI(model="gemini-2.5-flash", api_key=self.api_key)
+        Settings.embed_model = "local:all-MiniLM-L6-v2"
         
         storage_context = StorageContext.from_defaults(persist_dir=path)
         self._index = load_index_from_storage(storage_context)
