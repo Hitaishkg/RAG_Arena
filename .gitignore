@@ -1,0 +1,36 @@
+# Environment
+.env
+.env.local
+
+# Virtual environment
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Data — raw PDFs and large outputs (gitignored per spec)
+data/raw/
+data/indexes/
+results/evals.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoint
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Distribution
+dist/
+build/
+*.egg-info/
