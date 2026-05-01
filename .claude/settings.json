@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip:*)",
+      "Bash(uv:*)",
+      "Bash(pytest:*)",
+      "Bash(streamlit:*)",
+      "Bash(git:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Read(**)",
+      "Write(src/**)",
+      "Write(scripts/**)",
+      "Write(tests/**)",
+      "Write(dashboard/**)",
+      "Write(CODEBASE_GRAPH.md)",
+      "Write(README.md)"
+    ]
+  }
+}
