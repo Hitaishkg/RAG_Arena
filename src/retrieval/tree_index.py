@@ -2,21 +2,30 @@ import os
 from src.retrieval.base import BaseRetriever, Chunk, RetrievalResult
 
 
-def _make_llm():
-    """Return Groq LLM if GROQ_API_KEY is set, otherwise fall back to Gemini."""
+def _make_leaf_llm():
+    """Small fast model for leaf summarization at build time — high call volume (~1,367 calls)."""
     groq_key = os.getenv("GROQ_API_KEY", "")
     if groq_key:
         from llama_index.llms.groq import Groq as LlamaGroq
-        return LlamaGroq(model="llama-3.3-70b-versatile", api_key=groq_key)
-
+        return LlamaGroq(model="llama-3.1-8b-instant", api_key=groq_key)
     google_key = os.getenv("GOOGLE_API_KEY", "")
     if google_key:
         from llama_index.llms.google_genai import GoogleGenAI
         return GoogleGenAI(model="gemini-2.5-flash", api_key=google_key)
+    raise RuntimeError("No LLM available: set GROQ_API_KEY or GOOGLE_API_KEY in .env")
 
-    raise RuntimeError(
-        "No LLM available: set GROQ_API_KEY (preferred) or GOOGLE_API_KEY in .env"
-    )
+
+def _make_traversal_llm():
+    """Large model for query-time tree traversal — low call volume (~5 calls per query)."""
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if groq_key:
+        from llama_index.llms.groq import Groq as LlamaGroq
+        return LlamaGroq(model="llama-3.3-70b-versatile", api_key=groq_key)
+    google_key = os.getenv("GOOGLE_API_KEY", "")
+    if google_key:
+        from llama_index.llms.google_genai import GoogleGenAI
+        return GoogleGenAI(model="gemini-2.5-flash", api_key=google_key)
+    raise RuntimeError("No LLM available: set GROQ_API_KEY or GOOGLE_API_KEY in .env")
 
 
 class TreeIndexRetriever(BaseRetriever):
@@ -33,7 +42,7 @@ class TreeIndexRetriever(BaseRetriever):
     def build_index(self) -> None:
         from llama_index.core import Settings, Document, TreeIndex
 
-        Settings.llm = _make_llm()
+        Settings.llm = _make_leaf_llm()  # 8B for high-volume leaf summarization
         Settings.embed_model = "local:all-MiniLM-L6-v2"
         Settings.chunk_size = 512
         Settings.chunk_overlap = 64
@@ -96,7 +105,7 @@ class TreeIndexRetriever(BaseRetriever):
     def load_index(self, path: str) -> None:
         from llama_index.core import StorageContext, load_index_from_storage, Settings
 
-        Settings.llm = _make_llm()
+        Settings.llm = _make_traversal_llm()  # 70B for query-time traversal
         Settings.embed_model = "local:all-MiniLM-L6-v2"
 
         storage_context = StorageContext.from_defaults(persist_dir=path)
