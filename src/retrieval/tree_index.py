@@ -1,14 +1,38 @@
 import os
+import time
+import threading
 from src.retrieval.base import BaseRetriever, Chunk, RetrievalResult
 
 
 def _make_leaf_llm():
-    """Gemini 1.5 Flash for leaf summarization — 1,500 req/day free tier covers 1,367 chunks.
-    Groq 8B fallback only when Google key is absent (500K TPD insufficient for full build)."""
+    """Gemini 1.5 Flash at 14 RPM for leaf summarization.
+    Free tier: 1,500 RPD (covers 1,367 chunks), 250K TPM.
+    Proactive throttle avoids 429s and LlamaIndex's 120s retry penalty.
+    Build completes in ~98 min; never touches the rate limit ceiling.
+    Groq 8B fallback only when Google key absent (500K TPD < 1.37M tokens needed)."""
     google_key = os.getenv("GOOGLE_API_KEY", "")
     if google_key:
         from llama_index.llms.google_genai import GoogleGenAI
-        return GoogleGenAI(model="gemini-1.5-flash", api_key=google_key)
+
+        llm = GoogleGenAI(model="gemini-1.5-flash", api_key=google_key)
+
+        # Throttle to 14 RPM: one call per 4.3s, never hits the 15 RPM cap
+        _interval = 60.0 / 14
+        _last = [0.0]
+        _lock = threading.Lock()
+        _orig_chat = llm.chat
+
+        def _throttled_chat(messages, **kwargs):
+            with _lock:
+                gap = _interval - (time.monotonic() - _last[0])
+                if gap > 0:
+                    time.sleep(gap)
+                _last[0] = time.monotonic()
+            return _orig_chat(messages, **kwargs)
+
+        llm.chat = _throttled_chat
+        return llm
+
     groq_key = os.getenv("GROQ_API_KEY", "")
     if groq_key:
         from llama_index.llms.groq import Groq as LlamaGroq
