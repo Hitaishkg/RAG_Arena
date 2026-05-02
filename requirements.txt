@@ -39,3 +39,8 @@ pre-commit>=3.7.0
 # Notebook
 jupyter>=1.0.0
 nbformat>=5.9.0
+
+# Phase 4 — API
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
