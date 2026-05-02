@@ -16,21 +16,26 @@ def _make_leaf_llm():
 
         llm = GoogleGenAI(model="gemini-1.5-flash", api_key=google_key)
 
-        # Throttle to 14 RPM: one call per 4.3s, never hits the 15 RPM cap
-        _interval = 60.0 / 14
-        _last = [0.0]
-        _lock = threading.Lock()
-        _orig_chat = llm.chat
+        # Optional throttle for free-tier users: set TREE_BUILD_RPM=14 in .env
+        # Paid tier (billing enabled): leave unset — runs at full speed (~1 min build)
+        # Free tier (no billing): set TREE_BUILD_RPM=14 — safe ~98 min build, no 429s
+        rpm = os.getenv("TREE_BUILD_RPM", "")
+        if rpm:
+            _interval = 60.0 / float(rpm)
+            _last = [0.0]
+            _lock = threading.Lock()
+            _orig_chat = llm.chat
 
-        def _throttled_chat(messages, **kwargs):
-            with _lock:
-                gap = _interval - (time.monotonic() - _last[0])
-                if gap > 0:
-                    time.sleep(gap)
-                _last[0] = time.monotonic()
-            return _orig_chat(messages, **kwargs)
+            def _throttled_chat(messages, **kwargs):
+                with _lock:
+                    gap = _interval - (time.monotonic() - _last[0])
+                    if gap > 0:
+                        time.sleep(gap)
+                    _last[0] = time.monotonic()
+                return _orig_chat(messages, **kwargs)
 
-        llm.chat = _throttled_chat
+            llm.chat = _throttled_chat
+
         return llm
 
     groq_key = os.getenv("GROQ_API_KEY", "")
