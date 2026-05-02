@@ -11,9 +11,8 @@ __pycache__/
 *.pyd
 .Python
 
-# Data — raw PDFs and large outputs (gitignored per spec)
+# Data — raw PDFs gitignored (large); indexes + chunks committed for Railway deploy
 data/raw/
-data/indexes/
 results/evals.db
 
 # Jupyter
