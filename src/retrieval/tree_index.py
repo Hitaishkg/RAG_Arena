@@ -3,16 +3,17 @@ from src.retrieval.base import BaseRetriever, Chunk, RetrievalResult
 
 
 def _make_leaf_llm():
-    """Small fast model for leaf summarization at build time — high call volume (~1,367 calls)."""
+    """Gemini 1.5 Flash for leaf summarization — 1,500 req/day free tier covers 1,367 chunks.
+    Groq 8B fallback only when Google key is absent (500K TPD insufficient for full build)."""
+    google_key = os.getenv("GOOGLE_API_KEY", "")
+    if google_key:
+        from llama_index.llms.google_genai import GoogleGenAI
+        return GoogleGenAI(model="gemini-1.5-flash", api_key=google_key)
     groq_key = os.getenv("GROQ_API_KEY", "")
     if groq_key:
         from llama_index.llms.groq import Groq as LlamaGroq
         return LlamaGroq(model="llama-3.1-8b-instant", api_key=groq_key)
-    google_key = os.getenv("GOOGLE_API_KEY", "")
-    if google_key:
-        from llama_index.llms.google_genai import GoogleGenAI
-        return GoogleGenAI(model="gemini-2.5-flash", api_key=google_key)
-    raise RuntimeError("No LLM available: set GROQ_API_KEY or GOOGLE_API_KEY in .env")
+    raise RuntimeError("No LLM available: set GOOGLE_API_KEY or GROQ_API_KEY in .env")
 
 
 def _make_traversal_llm():
