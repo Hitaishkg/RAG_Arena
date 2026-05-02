@@ -22,7 +22,7 @@ def download_corpus(corpus_path: str = "data/corpus.json", raw_dir: str = "data/
         corpus = json.load(f)
 
     results = []
-    headers = {"User-Agent": "RAGArena/1.0 (research; non-commercial)"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
 
     for i, doc in enumerate(corpus, 1):
         doc_id = doc["doc_id"]

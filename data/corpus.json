@@ -7,38 +7,38 @@
   },
   {
     "doc_id": "sebi_pit_2015",
-    "name": "SEBI Prohibition of Insider Trading Regulations 2015",
+    "name": "SEBI Prohibition of Insider Trading Regulations 2015 (last amended March 2025)",
     "category": "sebi_regulation",
-    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/1422894793684.pdf"
+    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/jul-2025/1752572636085.pdf"
   },
   {
     "doc_id": "sebi_icdr_2018",
-    "name": "SEBI Issue of Capital and Disclosure Requirements Regulations 2018",
+    "name": "SEBI Issue of Capital and Disclosure Requirements Regulations 2018 (last amended March 2025)",
     "category": "sebi_regulation",
-    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/sep2018/1537169869590.pdf"
+    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/apr-2025/1745404931291.pdf"
   },
   {
     "doc_id": "sebi_sast_2011",
-    "name": "SEBI Substantial Acquisition of Shares and Takeovers Regulations 2011",
+    "name": "SEBI Substantial Acquisition of Shares and Takeovers Regulations 2011 (last amended December 2025)",
     "category": "sebi_regulation",
-    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/1316005591416.pdf"
+    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/dec-2025/1766569598336.pdf"
   },
   {
     "doc_id": "rbi_kyc_master_dir",
-    "name": "RBI Master Direction Know Your Customer 2016",
+    "name": "RBI Master Direction Know Your Customer 2016 (updated August 2025)",
     "category": "rbi_master_direction",
-    "url": "https://rbidocs.rbi.org.in/rdocs/notification/pdfs/NOTI111ACF2D8B2A3E4D948D9D2BFB61C4FEF8.PDF"
+    "url": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/MD18KYCF6E92C82E1E1419D87323E3869BC9F13.PDF"
   },
   {
     "doc_id": "rbi_nbfc_master_dir",
-    "name": "RBI Master Direction NBFC Acceptance of Public Deposits",
+    "name": "RBI Master Direction NBFC Acceptance of Public Deposits (updated February 2025)",
     "category": "rbi_master_direction",
-    "url": "https://rbidocs.rbi.org.in/rdocs/notification/pdfs/MD12_2903201566947C5C0DB448CE977A9EA98F80E4A9.PDF"
+    "url": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/38ADD300820164E998317F4EE42F1B8DE7FD0560D37A5.PDF"
   },
   {
     "doc_id": "sebi_mutual_fund_reg",
-    "name": "SEBI Mutual Funds Regulations 1996 (amended)",
+    "name": "SEBI Mutual Funds Regulations 1996 (last amended December 2024)",
     "category": "sebi_regulation",
-    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/1382610440272.pdf"
+    "url": "https://www.sebi.gov.in/sebi_data/attachdocs/dec-2024/1734952378369.pdf"
   }
 ]
