@@ -5,7 +5,7 @@ from src.retrieval.base import BaseRetriever, Chunk, RetrievalResult
 
 
 def _make_leaf_llm():
-    """Gemini 1.5 Flash at 14 RPM for leaf summarization.
+    """Gemini 2.5 Flash at 14 RPM for leaf summarization.
     Free tier: 1,500 RPD (covers 1,367 chunks), 250K TPM.
     Proactive throttle avoids 429s and LlamaIndex's 120s retry penalty.
     Build completes in ~98 min; never touches the rate limit ceiling.
@@ -13,30 +13,28 @@ def _make_leaf_llm():
     google_key = os.getenv("GOOGLE_API_KEY", "")
     if google_key:
         from llama_index.llms.google_genai import GoogleGenAI
+        from typing import ClassVar
 
-        llm = GoogleGenAI(model="gemini-1.5-flash", api_key=google_key)
-
-        # Optional throttle for free-tier users: set TREE_BUILD_RPM=14 in .env
-        # Paid tier (billing enabled): leave unset — runs at full speed (~1 min build)
-        # Free tier (no billing): set TREE_BUILD_RPM=14 — safe ~98 min build, no 429s
         rpm = os.getenv("TREE_BUILD_RPM", "")
         if rpm:
             _interval = 60.0 / float(rpm)
-            _last = [0.0]
-            _lock = threading.Lock()
-            _orig_chat = llm.chat
 
-            def _throttled_chat(messages, **kwargs):
-                with _lock:
-                    gap = _interval - (time.monotonic() - _last[0])
-                    if gap > 0:
-                        time.sleep(gap)
-                    _last[0] = time.monotonic()
-                return _orig_chat(messages, **kwargs)
+            class _ThrottledGemini(GoogleGenAI):
+                _t_last: ClassVar[float] = 0.0
+                _t_lock: ClassVar[threading.Lock] = threading.Lock()
+                _t_interval: ClassVar[float] = _interval
 
-            llm.chat = _throttled_chat
+                def chat(self, messages, **kwargs):
+                    with _ThrottledGemini._t_lock:
+                        gap = _ThrottledGemini._t_interval - (time.monotonic() - _ThrottledGemini._t_last)
+                        if gap > 0:
+                            time.sleep(gap)
+                        _ThrottledGemini._t_last = time.monotonic()
+                    return super().chat(messages, **kwargs)
 
-        return llm
+            return _ThrottledGemini(model="gemini-2.5-flash", api_key=google_key)
+
+        return GoogleGenAI(model="gemini-2.5-flash", api_key=google_key)
 
     groq_key = os.getenv("GROQ_API_KEY", "")
     if groq_key:
@@ -46,15 +44,19 @@ def _make_leaf_llm():
 
 
 def _make_traversal_llm():
-    """Large model for query-time tree traversal — low call volume (~5 calls per query)."""
+    """Large model for query-time tree traversal — low call volume (~5 calls per query).
+    Respects GENERATION_PROVIDER=gemini to skip Groq when rate limited."""
+    provider = os.getenv("GENERATION_PROVIDER", "groq").lower()
     groq_key = os.getenv("GROQ_API_KEY", "")
-    if groq_key:
+    google_key = os.getenv("GOOGLE_API_KEY", "")
+
+    if provider != "gemini" and groq_key:
         from llama_index.llms.groq import Groq as LlamaGroq
         return LlamaGroq(model="llama-3.3-70b-versatile", api_key=groq_key)
-    google_key = os.getenv("GOOGLE_API_KEY", "")
     if google_key:
         from llama_index.llms.google_genai import GoogleGenAI
-        return GoogleGenAI(model="gemini-2.5-flash", api_key=google_key)
+        model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        return GoogleGenAI(model=model, api_key=google_key)
     raise RuntimeError("No LLM available: set GROQ_API_KEY or GOOGLE_API_KEY in .env")
 
 

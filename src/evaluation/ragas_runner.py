@@ -16,7 +16,26 @@ def run_ragas(
     from ragas import evaluate, EvaluationDataset, SingleTurnSample
     from ragas.llms import llm_factory
     from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
-    from ragas.metrics.collections import ContextPrecision, ContextRecall, Faithfulness, AnswerRelevancy
+    from ragas.metrics import (
+        _LLMContextPrecisionWithReference as ContextPrecision,
+        _LLMContextRecall as ContextRecall,
+        _Faithfulness as Faithfulness,
+        _ResponseRelevancy as AnswerRelevancy,
+    )
+
+    class _EmbeddingsWithQuery(RagasHFEmbeddings):
+        """Add LangChain-compatible interface that ResponseRelevancy needs."""
+        def embed_query(self, text: str) -> list[float]:
+            return self.embed_text(text)
+
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            return self.embed_texts(texts)
+
+        async def aembed_query(self, text: str) -> list[float]:
+            return await self.aembed_text(text)
+
+        async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
+            return await self.aembed_texts(texts)
 
     def _build_llm():
         if groq_api_key:
@@ -31,24 +50,27 @@ def run_ragas(
         raise RuntimeError("run_ragas: no API key provided")
 
     ragas_llm = _build_llm()
-    ragas_emb = RagasHFEmbeddings(model="all-MiniLM-L6-v2")
+    ragas_emb = _EmbeddingsWithQuery(model="all-MiniLM-L6-v2")
 
     context_texts = [c["text"] for c in retrieved_chunks]
+    has_reference = bool(ground_truth.strip())
     sample = SingleTurnSample(
         user_input=query,
         retrieved_contexts=context_texts,
         response=generated_answer,
-        reference=ground_truth if ground_truth.strip() else None,
+        reference=ground_truth if has_reference else None,
     )
     dataset = EvaluationDataset(samples=[sample])
 
     metrics = [
-        ContextPrecision(llm=ragas_llm),
         Faithfulness(llm=ragas_llm),
         AnswerRelevancy(llm=ragas_llm, embeddings=ragas_emb),
     ]
-    if ground_truth.strip():
-        metrics.append(ContextRecall(llm=ragas_llm))
+    if has_reference:
+        metrics += [
+            ContextPrecision(llm=ragas_llm),
+            ContextRecall(llm=ragas_llm),
+        ]
 
     try:
         result = evaluate(dataset, metrics=metrics, show_progress=False)
@@ -57,10 +79,10 @@ def run_ragas(
         scores = {}
 
     return {
-        "context_precision": float(scores.get("context_precision", 0.0)),
+        # ragas 0.4.3: ContextPrecision produces "llm_context_precision_with_reference"
+        "context_precision": float(scores.get("llm_context_precision_with_reference", 0.0)),
         "context_recall": float(scores.get("context_recall", 0.0)),
         "faithfulness": float(scores.get("faithfulness", 0.0)),
-        # RAGAS 0.4 uses "answer_relevancy"; map to EvalRow contract key "answer_relevance"
         "answer_relevance": float(scores.get("answer_relevancy", 0.0)),
     }
 
@@ -72,13 +94,20 @@ def run_ragas_from_env(
     ground_truth: str,
 ) -> dict[str, float]:
     load_dotenv()
+    provider = os.getenv("GENERATION_PROVIDER", "groq").lower()
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    groq_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    # Respect GENERATION_PROVIDER — skip Groq when set to gemini
+    groq_api_key = os.getenv("GROQ_API_KEY") if provider != "gemini" else None
+
     return run_ragas(
         query=query,
         retrieved_chunks=chunks,
         generated_answer=answer,
         ground_truth=ground_truth,
-        groq_api_key=os.getenv("GROQ_API_KEY"),
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-        groq_model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
-        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        groq_api_key=groq_api_key,
+        google_api_key=google_api_key,
+        groq_model=groq_model,
+        gemini_model=gemini_model,
     )
