@@ -17,6 +17,7 @@ RUN python scripts/preload_models.py
 # Copy source
 COPY src/ src/
 COPY data/ data/
+COPY results/ results/
 
 EXPOSE 8080
 
