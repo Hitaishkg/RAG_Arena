@@ -13,7 +13,6 @@ __pycache__/
 
 # Data — raw PDFs gitignored (large); indexes + chunks committed for Railway deploy
 data/raw/
-results/evals.db
 
 # Jupyter
 .ipynb_checkpoints/
@@ -27,6 +26,9 @@ results/evals.db
 
 # Agent handoff files (transient, not source)
 .agent/
+
+# Deployment checklist (personal steps, not for repo)
+GCP_DEPLOY_CHECKLIST.md
 
 # OS
 .DS_Store
