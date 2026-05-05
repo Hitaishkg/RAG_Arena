@@ -1,6 +1,10 @@
 # Codebase Graph — RAG Arena
 
-Last updated: 2026-05-03 | Phase 3 ✅ COMPLETE | Phase 4 ✅ UI BUILT | Deployment 🔧 PENDING (Railway)
+Last updated: 2026-05-05 | Phase 3 ✅ COMPLETE | Phase 4 ✅ COMPLETE | Deployment ✅ LIVE (GCP Cloud Run)
+
+**Live URL:** https://rag-arena-322804211543.asia-south1.run.app/static/index.html
+**GCP Project:** rag-arena-io | **Region:** asia-south1 (Mumbai) | **Service:** rag-arena
+**Redeploy:** `gcloud run deploy rag-arena --source . --region asia-south1`
 
 ---
 
@@ -9,8 +13,8 @@ Last updated: 2026-05-03 | Phase 3 ✅ COMPLETE | Phase 4 ✅ UI BUILT | Deploym
 - **Phase 1:** Ingestion pipeline (downloader, extractor, chunker) — 1,367 chunks across 5 SEBI docs
 - **Phase 2:** All 4 retrievers (Dense, BM25, Hybrid, Tree Index) + indexes built
 - **Phase 3:** Generator + RAGAS 0.4 runner + full 41q × 4-strategy eval completed (run_12d94e65)
-- **Phase 4:** FastAPI backend + HTML/JS frontend built. `Procfile`, `railway.json`, `nixpacks.toml` ready.
-- **Pending:** Deploy to Railway — connect repo, set env vars (GROQ_API_KEY, GOOGLE_API_KEY, GENERATION_PROVIDER, GEMINI_MODEL), push.
+- **Phase 4:** FastAPI backend + HTML/JS frontend + deployed to GCP Cloud Run (asia-south1)
+- **Phase 5 (deferred):** PDF upload feature — user uploads 1-2 page doc, queries across BM25/Dense/Hybrid (tree index skipped for dynamic uploads due to LLM build cost + session state complexity on Cloud Run)
 
 ---
 
@@ -67,7 +71,7 @@ RAGAS 0.4.3 quirks (all fixed in `src/evaluation/ragas_runner.py`):
 
 | Task | Model | Provider | Env var |
 |------|-------|----------|---------|
-| Tree Index leaf summarisation | gemini-2.0-flash (or GEMINI_MODEL) | Google | GOOGLE_API_KEY |
+| Tree Index leaf summarisation | gemini-2.5-flash-lite (or GEMINI_MODEL) | Google | GOOGLE_API_KEY |
 | Tree Index traversal | llama-3.3-70b-versatile | Groq | GROQ_API_KEY |
 | Answer generation | llama-3.3-70b-versatile (or gemini) | Groq/Google | GENERATION_PROVIDER |
 | RAGAS judge | same as generation | Groq/Google | GENERATION_PROVIDER |
@@ -75,7 +79,18 @@ RAGAS 0.4.3 quirks (all fixed in `src/evaluation/ragas_runner.py`):
 | Reranker | cross-encoder/ms-marco-MiniLM-L-6-v2 | Local | — |
 
 Set `GENERATION_PROVIDER=gemini` to skip Groq for generation + RAGAS (use when Groq TPD exhausted).
-Set `GEMINI_MODEL=gemini-2.0-flash` to avoid thinking token costs (Gemini 2.5 Flash costs ~10× more).
+`GEMINI_MODEL=gemini-2.5-flash-lite` — $0.10/$0.40 per 1M tokens. If 503 UNAVAILABLE, generator.py auto-retries 3× then falls back to `gemini-2.0-flash`.
+
+---
+
+## GCP Deployment
+
+- **Platform:** Cloud Run, single container, `--source .` build via Cloud Build
+- **Config:** 2Gi RAM, 2 vCPU, min-instances=0 (scale to zero), max-instances=5, timeout=120s
+- **Secrets:** GROQ_API_KEY + GOOGLE_API_KEY via Secret Manager (`groq-api-key`, `google-api-key`)
+- **Env vars:** `GENERATION_PROVIDER=gemini`, `GEMINI_MODEL=gemini-2.5-flash-lite`
+- **Image:** Artifact Registry, asia-south1. Built with `preload_models.py` baked in.
+- **Note:** `results/evals.db` and `data/indexes/*` are committed to git — baked into image, no rebuild on deploy.
 
 ---
 
@@ -85,11 +100,13 @@ Set `GEMINI_MODEL=gemini-2.0-flash` to avoid thinking token costs (Gemini 2.5 Fl
 |------|---------|---------|--------|-------|
 | rag-arena-spec.md | Project Specification | — | ✅ | 0 |
 | CODEBASE_GRAPH.md | Agent Shared State | — | ✅ Current | 0 |
+| README.md | GitHub portfolio README | — | ✅ | 5 |
 | findings.md | Eval results analysis + strategy guide | — | ✅ Complete | 3 |
 | requirements.txt | All phase deps | — | ✅ | 1 |
 | Makefile | Script shortcuts | — | ✅ | 1 |
 | .pre-commit-config.yaml | black + ruff hooks | — | ✅ | 1 |
 | .github/workflows/ci.yml | GitHub Actions CI | — | ✅ | 1 |
+| Dockerfile | GCP Cloud Run container definition | — | ✅ | 4 |
 | data/corpus.json | PDF manifest | — | ✅ | 1 |
 | src/ingestion/downloader.py | PDF Downloader | download_corpus | ✅ | 1 |
 | src/ingestion/extractor.py | PDF Text Extractor | extract_pages, extract_corpus | ✅ | 1 |
@@ -100,11 +117,12 @@ Set `GEMINI_MODEL=gemini-2.0-flash` to avoid thinking token costs (Gemini 2.5 Fl
 | src/retrieval/bm25.py | BM25 Retriever | BM25Retriever | ✅ | 2 |
 | src/retrieval/hybrid.py | Hybrid Dense+BM25+CrossEncoder | HybridRetriever | ✅ | 2 |
 | src/retrieval/tree_index.py | LlamaIndex Tree Index | TreeIndexRetriever | ✅ | 2 |
-| src/generation/generator.py | LLM Answer Generator | generate, generate_from_env | ✅ | 3 |
+| src/generation/generator.py | LLM Answer Generator (Gemini retry+fallback) | generate, generate_from_env | ✅ | 3 |
 | src/evaluation/ragas_runner.py | RAGAS 0.4.3 runner | run_ragas, run_ragas_from_env | ✅ | 3 |
 | scripts/ingest.py | Ingestion pipeline CLI | — | ✅ | 1 |
 | scripts/build_indexes.py | Index building CLI | — | ✅ | 2 |
 | scripts/run_eval.py | Eval pipeline CLI | — | ✅ | 3 |
+| scripts/preload_models.py | Pre-downloads embeddings + reranker at Docker build time | — | ✅ | 4 |
 | data/eval/questions.json | 41 eval questions (final) | — | ✅ Final | 3 |
 | data/eval/ground_truth.json | 41 hand-written ground truths | — | ✅ Final | 3 |
 | data/eval/ground_truth_review.md | Review doc (reference only) | — | ✅ Done | 3 |
@@ -117,13 +135,12 @@ Set `GEMINI_MODEL=gemini-2.0-flash` to avoid thinking token costs (Gemini 2.5 Fl
 | tests/test_eval.py | Phase 3 eval pipeline unit tests | — | ✅ | 3 |
 | notebooks/exploration.ipynb | Chunk quality inspection | — | ✅ | 1 |
 | src/api/main.py | FastAPI backend (4 strategies, concurrent) | FastAPI app | ✅ | 4 |
-| src/api/static/index.html | HTML/JS Chat Frontend | — | ✅ | 4 |
+| src/api/static/index.html | HTML/JS Frontend (corpus panel, 4-column results, charts) | — | ✅ | 4 |
 | src/api/__init__.py | API package init | — | ✅ | 4 |
-| Procfile | Railway start command | — | ✅ | 4 |
-| railway.json | Railway build/deploy config | — | ✅ | 4 |
-| nixpacks.toml | Nixpacks — pre-downloads models at build | — | ✅ | 4 |
-| scripts/preload_models.py | Pre-downloads embeddings + reranker | — | ✅ | 4 |
-| results/evals.db | SQLite eval results (run_12d94e65) | — | ✅ | 3 |
+| Procfile | Railway start command (kept, unused) | — | ✅ | 4 |
+| railway.json | Railway build config (kept, unused) | — | ✅ | 4 |
+| nixpacks.toml | Nixpacks config (kept, unused) | — | ✅ | 4 |
+| results/evals.db | SQLite eval results (run_12d94e65) — committed, baked into Docker image | — | ✅ | 3 |
 
 ---
 
@@ -169,9 +186,9 @@ results/evals.db → GET /results → frontend charts tab
 | src/retrieval/hybrid.py | ✅ | ✅ | Dedup by chunk id |
 | src/retrieval/tree_index.py | ✅ | ✅ | GEMINI_MODEL env var respected; Groq primary |
 | src/evaluation/logger.py | ✅ | ✅ | All SQL parameterized |
-| src/generation/generator.py | ✅ | ✅ | — |
+| src/generation/generator.py | ✅ | ✅ | 503 retry + gemini-2.0-flash fallback |
 | src/evaluation/ragas_runner.py | ✅ | ✅ | RAGAS 0.4.3 quirks documented above |
 | scripts/run_eval.py | ✅ | ✅ | Cost guard mandatory |
 | src/api/main.py | ✅ | ✅ | Concurrent strategies; graceful tree_index skip |
-| src/api/static/index.html | ✅ | ✅ | — |
+| src/api/static/index.html | ✅ | ✅ | Corpus panel added |
 | tests/ | ✅ | ✅ | 33 passed |
