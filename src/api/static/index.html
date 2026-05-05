@@ -280,6 +280,49 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .corpus-info {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+    }
+    .corpus-info summary {
+      cursor: pointer;
+      color: var(--text-dim);
+      font-weight: 600;
+      list-style: none;
+      user-select: none;
+    }
+    .corpus-info summary::-webkit-details-marker { display: none; }
+    .corpus-info summary::before { content: '▶ '; font-size: 0.7rem; }
+    .corpus-info[open] summary::before { content: '▼ '; }
+    .corpus-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .corpus-doc {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .corpus-tag {
+      background: #2d3149;
+      color: var(--accent);
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.3rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+      min-width: 110px;
+      text-align: center;
+    }
+    .corpus-name { color: var(--text); flex: 1; }
+    .corpus-chunks { color: var(--text-dim); white-space: nowrap; }
+
     @media (max-width: 640px) {
       .input-row { flex-direction: column; align-items: stretch; }
       .charts-grid { grid-template-columns: 1fr; }
@@ -319,6 +362,37 @@
         <span class="example-tag" onclick="setQuestion(this.innerText)">What disclosures must a listed company make under SEBI PIT regulations?</span>
       </div>
     </div>
+
+    <details class="corpus-info">
+      <summary>Corpus — 5 SEBI Regulations · 1,367 chunks</summary>
+      <div class="corpus-grid">
+        <div class="corpus-doc">
+          <span class="corpus-tag">ICDR 2018</span>
+          <span class="corpus-name">Issue of Capital &amp; Disclosure Requirements</span>
+          <span class="corpus-chunks">700 chunks</span>
+        </div>
+        <div class="corpus-doc">
+          <span class="corpus-tag">LODR 2015</span>
+          <span class="corpus-name">Listing Obligations &amp; Disclosure Requirements</span>
+          <span class="corpus-chunks">173 chunks</span>
+        </div>
+        <div class="corpus-doc">
+          <span class="corpus-tag">Mutual Fund Reg</span>
+          <span class="corpus-name">SEBI Mutual Fund Regulations</span>
+          <span class="corpus-chunks">291 chunks</span>
+        </div>
+        <div class="corpus-doc">
+          <span class="corpus-tag">PIT 2015</span>
+          <span class="corpus-name">Prohibition of Insider Trading</span>
+          <span class="corpus-chunks">99 chunks</span>
+        </div>
+        <div class="corpus-doc">
+          <span class="corpus-tag">SAST 2011</span>
+          <span class="corpus-name">Substantial Acquisition of Shares &amp; Takeovers</span>
+          <span class="corpus-chunks">104 chunks</span>
+        </div>
+      </div>
+    </details>
 
     <div class="arena-grid" id="arena-grid">
       <!-- Cards will be injected here -->
