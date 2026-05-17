@@ -167,14 +167,16 @@ def query(req: QueryRequest):
         available_strategies=list(retrievers.keys()),
     )
 
+ACTIVE_RUN_ID = "run_023c3905"
+
 @app.get("/results")
 def results():
-    from src.evaluation.logger import fetch_all
+    from src.evaluation.logger import fetch_run
     db_path = os.getenv("EVAL_DB", "results/evals.db")
     if not os.path.exists(db_path):
         return {"rows": [], "summary": {}}
-    
-    rows = fetch_all(db_path)
+
+    rows = fetch_run(db_path, ACTIVE_RUN_ID)
     
     # Aggregate per strategy
     summary = {}

@@ -50,13 +50,13 @@ def _make_traversal_llm():
     groq_key = os.getenv("GROQ_API_KEY", "")
     google_key = os.getenv("GOOGLE_API_KEY", "")
 
-    if provider != "gemini" and groq_key:
-        from llama_index.llms.groq import Groq as LlamaGroq
-        return LlamaGroq(model="llama-3.3-70b-versatile", api_key=groq_key)
     if google_key:
         from llama_index.llms.google_genai import GoogleGenAI
         model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         return GoogleGenAI(model=model, api_key=google_key)
+    if groq_key:
+        from llama_index.llms.groq import Groq as LlamaGroq
+        return LlamaGroq(model="llama-3.3-70b-versatile", api_key=groq_key)
     raise RuntimeError("No LLM available: set GROQ_API_KEY or GOOGLE_API_KEY in .env")
 
 

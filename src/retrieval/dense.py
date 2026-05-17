@@ -8,7 +8,10 @@ from src.retrieval.base import BaseRetriever, Chunk, RetrievalResult
 class DenseRetriever(BaseRetriever):
     """Dense retriever using sentence-transformers and FAISS IndexFlatIP."""
 
-    def __init__(self, chunks: list[Chunk], model_name: str = "all-MiniLM-L6-v2"):
+    # BGE models need this prefix on queries (not on documents) for retrieval tasks
+    _BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+
+    def __init__(self, chunks: list[Chunk], model_name: str = "BAAI/bge-small-en-v1.5"):
         super().__init__(chunks)
         self.model_name = model_name
         self.model = None
@@ -42,8 +45,9 @@ class DenseRetriever(BaseRetriever):
         if not self.index or not self.model:
             raise RuntimeError("Index not built. Call build_index() or load_index() first.")
 
-        # Encode query
-        q_emb = self.model.encode([query], convert_to_numpy=True).astype("float32")
+        # Encode query (BGE models use an instruction prefix for retrieval)
+        q_text = self._BGE_QUERY_PREFIX + query if "bge" in self.model_name.lower() else query
+        q_emb = self.model.encode([q_text], convert_to_numpy=True).astype("float32")
         
         # L2-normalize query
         faiss.normalize_L2(q_emb)
