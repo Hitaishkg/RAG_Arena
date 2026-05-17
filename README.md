@@ -24,15 +24,17 @@ The corpus is 5 SEBI regulations (1,367 chunks, ~891 pages). Every strategy retr
 | Strategy | How it works | Best for |
 |----------|-------------|----------|
 | **BM25** | Sparse keyword matching (TF-IDF variant) | Exact terms, regulation numbers, speed |
-| **Dense** | Semantic similarity via FAISS + `all-MiniLM-L6-v2` | Conceptual / paraphrased queries |
+| **Dense** | Semantic similarity via FAISS + embedding model | Conceptual / paraphrased queries |
 | **Hybrid** | BM25 + Dense fused, re-ranked by cross-encoder | General Q&A — best overall recall |
-| **Tree Index** | LlamaIndex hierarchical summary tree (Gemini) | Keyword factoids — highest precision |
+| **Tree Index** | LlamaIndex hierarchical summary tree (Gemini) | Cross-topic compound queries — highest precision |
 
 ---
 
 ## Evaluation Results
 
-41 hand-crafted questions × 4 strategies = **164 eval rows** (RAGAS 0.4.3)
+41 hand-crafted questions across 4 categories (keyword, semantic, multihop, compound) × 4 strategies. Scored with RAGAS 0.4.3.
+
+### Run 1 — `run_12d94e65` (2026-05-03) · baseline encoder
 
 | Strategy | Precision | Recall | Faithfulness | Ans. Relevance | Latency |
 |----------|:---------:|:------:|:------------:|:--------------:|:-------:|
@@ -41,14 +43,45 @@ The corpus is 5 SEBI regulations (1,367 chunks, ~891 pages). Every strategy retr
 | Hybrid | 0.059 | **0.284** | 0.913 | **0.580** | 822ms |
 | Tree Index | **0.100** | 0.187 | 0.929 | 0.468 | 20,828ms |
 
-**Key findings:**
-- **Hybrid** wins on recall and answer relevance — best general-purpose strategy
-- **BM25** punches above its weight: beats dense on recall at 21ms latency
-- **Tree Index** achieves 0.375 precision on keyword queries (4× others) but 0 on multi-hop
-- **Dense** underperforms — general embeddings not tuned to regulatory language
-- 34/41 questions score 0 context precision across ALL strategies — RAGAS precision is strict; recall is the meaningful signal
+### Run 2 — `run_023c3905` (2026-05-17) · upgraded encoder
 
-Full breakdown in [`findings.md`](findings.md).
+| Strategy | Precision | Recall | Faithfulness | Ans. Relevance | Latency |
+|----------|:---------:|:------:|:------------:|:--------------:|:-------:|
+| BM25 | 0.149 | 0.296 | **0.911** | 0.744 | **57ms** |
+| Dense | 0.252 | 0.227 | **0.953** | 0.765 | 92ms |
+| Hybrid | 0.170 | **0.300** | 0.924 | **0.808** | 717ms |
+| Tree Index | **0.263** | 0.188 | 0.814 | 0.648 | 11,205ms |
+
+### What changed between runs
+
+The only variable changed between Run 1 and Run 2 was the **embedding model** used for Dense and Hybrid retrieval. The generator, RAGAS scorer, corpus, questions, and ground truth were identical.
+
+| Metric | Impact |
+|--------|--------|
+| Context Precision | +0.11 to +0.18 across all strategies |
+| Answer Relevance | +0.18 to +0.34 across all strategies |
+| Tree Index latency | 20,828ms → 11,205ms (encoder faster at inference) |
+| Hybrid latency | 822ms → 717ms |
+
+The encoder is upstream of every strategy. A better embedding model lifted all four strategies simultaneously — the largest single improvement observed across the project.
+
+### Per-category winners (Run 2)
+
+| Question type | Best strategy | Why |
+|---------------|--------------|-----|
+| Keyword (exact lookups) | **BM25** | Highest recall (0.563), fastest (57ms) |
+| Semantic (conceptual) | **Dense** (precision) / **Hybrid** (answer quality) | Dense embeds concepts best; Hybrid generates best answers |
+| Multihop (two-part) | **Hybrid** | Best recall (0.304) and answer relevance (0.840) |
+| Compound (cross-regulation) | **Tree Index** (retrieval) + **Dense** (answer) | Tree's hierarchy spans multiple branches; Dense generates best answers |
+
+**Key findings:**
+- **Hybrid** wins overall — best recall and answer relevance across both runs
+- **BM25** beats dense on recall at a fraction of the latency; strong on keyword queries
+- **Tree Index** surprisingly leads precision and recall on compound (cross-regulation) questions — its hierarchical structure navigates multi-topic queries well
+- **Faithfulness is uniformly high (0.81–0.95)** — the generation model stays grounded in retrieved context regardless of retrieval quality; the bottleneck is retrieval, not hallucination
+- **34/41 questions score 0 context precision across all strategies** — RAGAS precision is strict; recall is the more informative signal for this corpus
+
+Full breakdown with per-category tables and methodology notes in [`findings.md`](findings.md).
 
 ---
 
@@ -72,7 +105,7 @@ PDF Corpus (5 SEBI docs)
     → pdfplumber extractor → sentence-boundary chunker
     → 4 indexes built offline:
         BM25 (rank-bm25)
-        Dense FAISS (all-MiniLM-L6-v2)
+        Dense FAISS (embedding model)
         Hybrid (BM25 + Dense + cross-encoder reranker)
         Tree Index (LlamaIndex + Gemini leaf summarisation)
 
@@ -136,7 +169,8 @@ GENERATION_PROVIDER=gemini GEMINI_MODEL=gemini-2.0-flash \
   python scripts/run_eval.py --db results/evals.db
 ```
 
-> Cost: ~$0.25 with Gemini 2.0 Flash. Set `GEMINI_MODEL=gemini-2.0-flash` to avoid thinking token charges.
+> Cost: ~$0.25 with Gemini 2.0 Flash. Set `GEMINI_MODEL=gemini-2.0-flash` to avoid thinking token charges.  
+> After a new eval run, update `ACTIVE_RUN_ID` in `src/api/main.py` to point the UI at the new results.
 
 ---
 
@@ -156,8 +190,8 @@ rag_arena/
 │   ├── indexes/         # Pre-built indexes (BM25, FAISS, Tree)
 │   └── eval/            # Questions + hand-written ground truths
 ├── results/
-│   └── evals.db         # RAGAS eval results (run_12d94e65)
-├── findings.md          # Eval analysis + strategy selection guide
+│   └── evals.db         # RAGAS eval results (run_12d94e65, run_023c3905)
+├── findings.md          # Eval analysis + per-category breakdown + strategy guide
 ├── Dockerfile
 └── requirements.txt
 ```

@@ -1,5 +1,8 @@
-import sys, os
+import sys, os, warnings
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+# instructor (pulled in by ragas) still imports the deprecated google.generativeai package
+warnings.filterwarnings("ignore", category=FutureWarning, module="instructor")
 
 import argparse, json, glob, uuid
 from dotenv import load_dotenv

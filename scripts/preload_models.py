@@ -5,8 +5,8 @@ import sys
 
 print("Pre-downloading embedding model...")
 from sentence_transformers import SentenceTransformer
-SentenceTransformer("all-MiniLM-L6-v2")
-print("  all-MiniLM-L6-v2 cached.")
+SentenceTransformer("BAAI/bge-small-en-v1.5")
+print("  BAAI/bge-small-en-v1.5 cached.")
 
 print("Pre-downloading cross-encoder model...")
 from sentence_transformers import CrossEncoder

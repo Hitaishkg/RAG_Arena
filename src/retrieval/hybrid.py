@@ -10,7 +10,7 @@ class HybridRetriever(BaseRetriever):
     def __init__(
         self,
         chunks: list[Chunk],
-        dense_model: str = "all-MiniLM-L6-v2",
+        dense_model: str = "BAAI/bge-small-en-v1.5",
         reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         candidate_k: int = 10,
     ):

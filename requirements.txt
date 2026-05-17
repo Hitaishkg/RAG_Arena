@@ -28,6 +28,7 @@ instructor>=1.15.0
 # streamlit>=1.37.0
 # pandas>=2.2.0
 # plotly>=5.23.0
+matplotlib>=3.8.0
 
 # Testing & Dev
 pytest>=8.0.0
