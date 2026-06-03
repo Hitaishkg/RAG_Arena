@@ -28,14 +28,49 @@ def generate(
     gemini_model: str = "gemini-2.5-flash-lite",
 ) -> dict[str, Any]:
     last_exception = None
+    user_prompt = _build_user_prompt(query, chunks)
 
-    # 1. Try Groq
+    # 1. Gemini primary — proper system/user role separation via system_instruction
+    if google_api_key:
+        import time
+        import google.genai as genai
+        from google.genai import types
+        client = genai.Client(api_key=google_api_key)
+
+        gemini_candidates = [gemini_model, "gemini-2.0-flash"]
+        for model_candidate in gemini_candidates:
+            for attempt in range(3):
+                try:
+                    response = client.models.generate_content(
+                        model=model_candidate,
+                        contents=user_prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_PROMPT,
+                            max_output_tokens=1024,
+                            temperature=0.1,
+                        ),
+                    )
+                    token_cost = 0
+                    if hasattr(response, "usage_metadata") and response.usage_metadata:
+                        token_cost = response.usage_metadata.total_token_count
+                    return {
+                        "answer": response.text,
+                        "token_cost": token_cost,
+                        "model_used": model_candidate,
+                    }
+                except Exception as e:
+                    last_exception = e
+                    err = str(e)
+                    if "503" in err or "UNAVAILABLE" in err or "high demand" in err:
+                        time.sleep(2 ** attempt)
+                        continue
+                    break
+
+    # 2. Groq fallback — proper system/user role separation
     if groq_api_key:
         try:
             from groq import Groq
             client = Groq(api_key=groq_api_key)
-            user_prompt = _build_user_prompt(query, chunks)
-            
             response = client.chat.completions.create(
                 model=groq_model,
                 messages=[
@@ -45,7 +80,6 @@ def generate(
                 max_tokens=1024,
                 temperature=0.1,
             )
-            
             return {
                 "answer": response.choices[0].message.content,
                 "token_cost": response.usage.total_tokens if response.usage else 0,
@@ -54,52 +88,22 @@ def generate(
         except Exception as e:
             last_exception = e
 
-    # 2. Fallback to Gemini (with retry + model fallback on 503)
-    import time
-    import google.genai as genai
-    client = genai.Client(api_key=google_api_key)
-    user_prompt = _build_user_prompt(query, chunks)
-    full_prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}"
-
-    gemini_candidates = [gemini_model, "gemini-2.5-flash-lite"]
-    for model_candidate in gemini_candidates:
-        for attempt in range(3):
-            try:
-                response = client.models.generate_content(
-                    model=model_candidate,
-                    contents=full_prompt,
-                )
-                token_cost = 0
-                if hasattr(response, "usage_metadata") and response.usage_metadata:
-                    token_cost = response.usage_metadata.total_token_count
-                return {
-                    "answer": response.text,
-                    "token_cost": token_cost,
-                    "model_used": model_candidate,
-                }
-            except Exception as e:
-                last_exception = e
-                err = str(e)
-                if "503" in err or "UNAVAILABLE" in err or "high demand" in err:
-                    time.sleep(2 ** attempt)  # 1s, 2s, 4s
-                    continue
-                break  # non-503 error — skip retries, try next model
-
     if last_exception:
         raise last_exception
-    
     raise RuntimeError("Generation failed: No API keys provided or models failed.")
 
 def generate_from_env(query: str, chunks: list[dict]) -> dict[str, Any]:
     load_dotenv()
 
     google_api_key = os.getenv("GOOGLE_API_KEY")
+    groq_api_key = os.getenv("GROQ_API_KEY")
     groq_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
 
-    # Set GENERATION_PROVIDER=gemini in .env to skip Groq (e.g. when rate limited)
-    provider = os.getenv("GENERATION_PROVIDER", "groq").lower()
-    groq_api_key = os.getenv("GROQ_API_KEY") if provider != "gemini" else None
+    # Gemini is primary. Set GENERATION_PROVIDER=groq to force Groq (e.g. when Gemini rate limited).
+    provider = os.getenv("GENERATION_PROVIDER", "gemini").lower()
+    if provider == "groq":
+        google_api_key = None
 
     return generate(
         query=query,
