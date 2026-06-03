@@ -1,39 +1,12 @@
 import os
-import time
-import threading
 from src.retrieval.base import BaseRetriever, Chunk, RetrievalResult
 
 
 def _make_leaf_llm():
-    """Gemini 2.5 Flash at 14 RPM for leaf summarization.
-    Free tier: 1,500 RPD (covers 1,367 chunks), 250K TPM.
-    Proactive throttle avoids 429s and LlamaIndex's 120s retry penalty.
-    Build completes in ~98 min; never touches the rate limit ceiling.
-    Groq 8B fallback only when Google key absent (500K TPD < 1.37M tokens needed)."""
+    """Gemini 2.5 Flash for high-volume leaf summarization at build time."""
     google_key = os.getenv("GOOGLE_API_KEY", "")
     if google_key:
         from llama_index.llms.google_genai import GoogleGenAI
-        from typing import ClassVar
-
-        rpm = os.getenv("TREE_BUILD_RPM", "")
-        if rpm:
-            _interval = 60.0 / float(rpm)
-
-            class _ThrottledGemini(GoogleGenAI):
-                _t_last: ClassVar[float] = 0.0
-                _t_lock: ClassVar[threading.Lock] = threading.Lock()
-                _t_interval: ClassVar[float] = _interval
-
-                def chat(self, messages, **kwargs):
-                    with _ThrottledGemini._t_lock:
-                        gap = _ThrottledGemini._t_interval - (time.monotonic() - _ThrottledGemini._t_last)
-                        if gap > 0:
-                            time.sleep(gap)
-                        _ThrottledGemini._t_last = time.monotonic()
-                    return super().chat(messages, **kwargs)
-
-            return _ThrottledGemini(model="gemini-2.5-flash", api_key=google_key)
-
         return GoogleGenAI(model="gemini-2.5-flash", api_key=google_key)
 
     groq_key = os.getenv("GROQ_API_KEY", "")
@@ -44,16 +17,14 @@ def _make_leaf_llm():
 
 
 def _make_traversal_llm():
-    """Large model for query-time tree traversal — low call volume (~5 calls per query).
-    Respects GENERATION_PROVIDER=gemini to skip Groq when rate limited."""
-    provider = os.getenv("GENERATION_PROVIDER", "groq").lower()
-    groq_key = os.getenv("GROQ_API_KEY", "")
+    """Large model for query-time tree traversal — low call volume (~5 calls per query)."""
     google_key = os.getenv("GOOGLE_API_KEY", "")
-
     if google_key:
         from llama_index.llms.google_genai import GoogleGenAI
         model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         return GoogleGenAI(model=model, api_key=google_key)
+
+    groq_key = os.getenv("GROQ_API_KEY", "")
     if groq_key:
         from llama_index.llms.groq import Groq as LlamaGroq
         return LlamaGroq(model="llama-3.3-70b-versatile", api_key=groq_key)
@@ -61,12 +32,11 @@ def _make_traversal_llm():
 
 
 class TreeIndexRetriever(BaseRetriever):
-    """LlamaIndex TreeIndex retriever. Uses Groq (llama-3.3-70b) by default;
-    falls back to Gemini 2.5 Flash if only GOOGLE_API_KEY is set."""
+    """LlamaIndex TreeIndex retriever. Uses Gemini 2.5 Flash by default;
+    falls back to Groq llama-3.3-70b if only GROQ_API_KEY is set."""
 
     def __init__(self, chunks: list[Chunk], api_key: str | None = None):
         super().__init__(chunks)
-        # api_key kept for backwards-compat; LLM selection handled by _make_llm()
         self.api_key = api_key
         self._index = None
         self._query_engine = None
@@ -74,7 +44,7 @@ class TreeIndexRetriever(BaseRetriever):
     def build_index(self) -> None:
         from llama_index.core import Settings, Document, TreeIndex
 
-        Settings.llm = _make_leaf_llm()  # 8B for high-volume leaf summarization
+        Settings.llm = _make_leaf_llm()
         Settings.embed_model = "local:all-MiniLM-L6-v2"
         Settings.chunk_size = 512
         Settings.chunk_overlap = 64
@@ -137,7 +107,7 @@ class TreeIndexRetriever(BaseRetriever):
     def load_index(self, path: str) -> None:
         from llama_index.core import StorageContext, load_index_from_storage, Settings
 
-        Settings.llm = _make_traversal_llm()  # 70B for query-time traversal
+        Settings.llm = _make_traversal_llm()
         Settings.embed_model = "local:all-MiniLM-L6-v2"
 
         storage_context = StorageContext.from_defaults(persist_dir=path)
