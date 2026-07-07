@@ -1,3 +1,2 @@
 dashboard/** linguist-vendored
-
-src/api/static/index.html linguist-vendored
+src/api/static/index.html linguist-generated=true
