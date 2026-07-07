@@ -195,7 +195,7 @@ rag_arena/
 ├── Dockerfile
 └── requirements.txt
 ```
-
+  
 ---
 
 ## License
