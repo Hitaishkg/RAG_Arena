@@ -197,7 +197,7 @@ rag_arena/
 │   ├── corpus.json      # Source PDF manifest
 │   ├── chunks/          # Pre-chunked corpus (1,367 chunks)
 │   ├── indexes/         # Pre-built indexes (BM25, FAISS, Hybrid, Tree)
-│   └── eval/            # Questions + hand-written ground truths
+│   └── eval/            # Questions + golden-set ground truths (LLM-drafted, every claim verified against its cited source)
 ├── results/
 │   └── evals.db         # RAGAS eval results (run_12d94e65, run_023c3905)
 ├── docs/

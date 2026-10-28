@@ -189,7 +189,7 @@ RAGAS `ResponseRelevancy` multiplies cosine similarity by `int(not noncommittal)
 
 - **Run 1 missing row**: `mh_02 × dense` returned NaN faithfulness (generation call failed silently). 163/164 rows completed.
 - **Answer relevance note**: Values are suppressed ~30–50% by RAGAS noncommittal penalty. Relative comparisons are valid; absolute values are not.
-- **Ground truth**: Hand-written from SEBI regulatory text. 10 questions removed that required RBI/MCA corpus not in scope. 1 question removed (kw_01) where relevant regulation was truncated in the corpus.
+- **Ground truth**: Golden set drafted with an LLM from SEBI regulatory text, then every claim manually verified against its cited source passage before use. 10 questions removed that required RBI/MCA corpus not in scope. 1 question removed (kw_01) where relevant regulation was truncated in the corpus.
 - **Tree index build cost**: ~$2.50 using Gemini 2.5 Flash (thinking tokens) for Run 1. Set `GEMINI_MODEL=gemini-2.0-flash` to reduce future build costs to ~$0.10.
 - **Token tracking**: All token counts sourced from live API response metadata (`response.usage.total_tokens` for Groq, `response.usage_metadata.total_token_count` for Gemini). Real billed tokens, not estimates.
 - **Tree index library**: Built and queried using LlamaIndex (`llama-index-core`) — `TreeIndex.from_documents()` for ingestion, `as_query_engine(retriever_mode="select_leaf")` for traversal. LlamaIndex owns the full tree lifecycle (construction, persistence, traversal).
