@@ -31,7 +31,7 @@ The corpus is 5 SEBI regulations (1,367 chunks, ~891 pages). Every strategy retr
 
 ## Evaluation Results
 
-41 hand-crafted questions across 4 categories (keyword, semantic, multihop, compound) × 4 strategies. Scored with RAGAS 0.4.3.
+41 golden-set questions (LLM-drafted, manually verified against source passages) across 4 categories (keyword, semantic, multihop, compound) × 4 strategies. Scored with RAGAS 0.4.3.
 
 ### Run 1 — `run_12d94e65` (2026-05-03) · baseline encoder
 
