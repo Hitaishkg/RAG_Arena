@@ -210,5 +210,3 @@ rag_arena/
 ├── Makefile
 └── requirements.txt
 ```
-  
----
