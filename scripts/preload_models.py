@@ -1,4 +1,4 @@
-"""Pre-download sentence-transformers models during Railway build phase.
+"""Pre-download sentence-transformers models during the Docker build.
 Run once at build time so cold starts don't re-download from HuggingFace.
 """
 import sys

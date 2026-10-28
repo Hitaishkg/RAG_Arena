@@ -1,3 +1,11 @@
+.PHONY: serve test ingest build-indexes eval safety
+
+serve:
+	uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+
+test:
+	pytest tests/ -v
+
 ingest:
 	python scripts/ingest.py
 
@@ -7,11 +15,5 @@ build-indexes:
 eval:
 	python scripts/run_eval.py
 
-dashboard:
-	streamlit run src/dashboard/app.py
-
-test:
-	pytest tests/ -v
-
-findings:
-	python scripts/export_findings.py
+safety:
+	python scripts/safety_test.py
