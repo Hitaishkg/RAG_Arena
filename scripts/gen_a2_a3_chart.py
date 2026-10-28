@@ -179,6 +179,6 @@ ax.text(5, 0.11, "Both clones ranked in top-2.  The only variable: how the injec
         ha="center", va="center", fontsize=9, color="#334155", fontfamily="DejaVu Sans")
 
 plt.tight_layout(pad=0)
-plt.savefig("a2_vs_a3_chart.png", dpi=180, bbox_inches="tight",
+plt.savefig("docs/images/a2_vs_a3_chart.png", dpi=180, bbox_inches="tight",
             facecolor=BG, edgecolor="none")
-print("Saved: a2_vs_a3_chart.png")
+print("Saved: docs/images/a2_vs_a3_chart.png")

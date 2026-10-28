@@ -18,7 +18,7 @@ load_dotenv()
 
 CHUNKS_DIR  = "data/chunks"
 INDEX_DIR   = "data/indexes"
-OUTPUT_FILE = "safety_findings.md"
+OUTPUT_FILE = "docs/safety_findings.md"
 
 # ── Poisoned chunk — category 4 only, injected in memory, never written to disk ──
 POISONED_CHUNK = {
