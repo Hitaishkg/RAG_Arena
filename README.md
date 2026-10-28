@@ -7,7 +7,6 @@ Live demo → **[rag-arena-322804211543.asia-south1.run.app](https://rag-arena-3
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
 ![GCP](https://img.shields.io/badge/GCP-Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -83,6 +82,12 @@ The encoder is upstream of every strategy. A better embedding model lifted all f
 
 Full breakdown with per-category tables and methodology notes in [`findings.md`](findings.md).
 
+### Safety testing
+
+`scripts/safety_test.py` runs adversarial prompts (direct prompt injection, off-corpus questions, hallucination triggers, indirect injection through poisoned chunks, jailbreaks, refusal suppression, multi-turn context manipulation and encoded payloads) against the Hybrid pipeline. Raw responses, verdicts and analysis are in [`docs/safety_findings.md`](docs/safety_findings.md).
+
+![A2 vs A3 indirect injection: same retrieval rank, different phrasing](docs/images/a2_vs_a3_chart.png)
+
 ---
 
 ## Corpus
@@ -95,6 +100,8 @@ Full breakdown with per-category tables and methodology notes in [`findings.md`]
 | SEBI PIT 2015 | Prohibition of Insider Trading | 99 |
 | SEBI SAST 2011 | Substantial Acquisition of Shares & Takeovers | 104 |
 | **Total** | | **1,367** |
+
+Chunking quality notes (footnote noise, cross-page splits, section detection) are in [`docs/chunking_analysis.md`](docs/chunking_analysis.md).
 
 ---
 
@@ -112,7 +119,7 @@ PDF Corpus (5 SEBI docs)
 Query (runtime)
     → FastAPI /query endpoint
     → concurrent.futures: all 4 strategies in parallel
-    → LLM answer generation (Groq llama-3.3-70b / Gemini 2.5 Flash Lite)
+    → LLM answer generation (Gemini 2.5 Flash Lite primary, Groq llama-3.3-70b fallback)
     → 4 results returned simultaneously to frontend
 
 Eval pipeline (offline)
@@ -129,7 +136,7 @@ Eval pipeline (offline)
 |-------|-------|
 | Retrieval | FAISS, rank-bm25, LlamaIndex, sentence-transformers |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 |
-| Generation | Groq (llama-3.3-70b-versatile), Google Gemini 2.5 Flash Lite |
+| Generation | Google Gemini 2.5 Flash Lite (primary), Groq llama-3.3-70b-versatile (fallback) |
 | Evaluation | RAGAS 0.4.3 |
 | Backend | FastAPI, uvicorn |
 | Frontend | Vanilla HTML/JS, Chart.js |
@@ -181,18 +188,26 @@ rag_arena/
 ├── src/
 │   ├── ingestion/       # PDF download, text extraction, chunking
 │   ├── retrieval/       # BM25, Dense, Hybrid, Tree Index retrievers
-│   ├── generation/      # LLM answer generator (Groq + Gemini)
+│   ├── generation/      # LLM answer generator (Gemini primary, Groq fallback)
 │   ├── evaluation/      # RAGAS runner + SQLite logger
 │   └── api/             # FastAPI app + static frontend
-├── scripts/             # CLI: ingest, build_indexes, run_eval, preload_models
+├── scripts/             # CLI: ingest, build_indexes, run_eval, preload_models,
+│                        #      safety_test, visualize_tree, gen_a2_a3_chart
 ├── data/
+│   ├── corpus.json      # Source PDF manifest
 │   ├── chunks/          # Pre-chunked corpus (1,367 chunks)
-│   ├── indexes/         # Pre-built indexes (BM25, FAISS, Tree)
+│   ├── indexes/         # Pre-built indexes (BM25, FAISS, Hybrid, Tree)
 │   └── eval/            # Questions + hand-written ground truths
 ├── results/
 │   └── evals.db         # RAGAS eval results (run_12d94e65, run_023c3905)
+├── docs/
+│   ├── chunking_analysis.md   # Chunking quality review
+│   ├── safety_findings.md     # Adversarial safety test results + analysis
+│   └── images/                # Charts used in the docs
+├── tests/               # pytest suite
 ├── findings.md          # Eval analysis + per-category breakdown + strategy guide
 ├── Dockerfile
+├── Makefile
 └── requirements.txt
 ```
   
