@@ -212,7 +212,3 @@ rag_arena/
 ```
   
 ---
-
-## License
-
-MIT
