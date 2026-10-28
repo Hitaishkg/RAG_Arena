@@ -312,7 +312,7 @@ if __name__ == "__main__":
     print("Loading tree index...")
     hierarchy = load_hierarchy()
 
-    out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tree_viz.html"))
+    out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src", "api", "static", "tree_viz.html"))
     print("Rendering...")
     render_html(hierarchy, out_path)
     print(f"Saved: {out_path}")
